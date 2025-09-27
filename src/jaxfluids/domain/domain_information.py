@@ -8,6 +8,7 @@ from jaxfluids.domain.helper_functions import flatten_subdomain_dimensions, \
     split_cell_centers_xi, split_cell_sizes_xi, split_subdomain_dimensions, \
     reassemble_cell_centers
 from jaxfluids.domain.mesh_creation import *
+from jaxfluids.domain.mesh_creation.from_h5 import from_h5
 from jaxfluids.data_types.case_setup.domain import \
     DomainSetup, AxisSetup, MeshStretchingSetup
 from jaxfluids.domain import AXES, AXES_INDICES, FACE_LOCATIONS, \
@@ -98,7 +99,8 @@ class DomainInformation:
             "HOMOGENEOUS": homogeneous,
             "CHANNEL": channel,
             "BOUNDARY_LAYER": boundary_layer,
-            "PIECEWISE": piecewise
+            "PIECEWISE": piecewise,
+            "FROM_H5": from_h5
         } 
 
         for axis_index, axis in enumerate(AXES):

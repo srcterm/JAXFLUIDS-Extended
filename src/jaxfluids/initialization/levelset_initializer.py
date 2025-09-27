@@ -328,7 +328,15 @@ class LevelsetInitializer:
         local_device_count = self.domain_information.local_device_count
 
         with h5py.File(h5_file_path, "r") as h5file:
-            levelset_init = h5file["levelset"][:]
+            # Check if this is a non-uniform grid H5 file (FROM_H5 mesh)
+            if h5file.attrs.get("non_uniform_grid", False):
+                # Use H5MeshProcessor for cell-centered levelset data
+                from jaxfluids.domain.mesh_creation.from_h5 import H5MeshProcessor
+                processor = H5MeshProcessor(h5_file_path)
+                levelset_init = processor.get_cell_centered_levelset()
+            else:
+                # Standard levelset data loading
+                levelset_init = h5file["levelset"][:]
 
         if is_parallel:
             levelset_init = split_buffer_np(levelset_init, split_factors)

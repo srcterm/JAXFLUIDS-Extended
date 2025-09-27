@@ -16,15 +16,16 @@ class PiecewiseStretchingParameters(NamedTuple):
 
 class MeshStretchingSetup(NamedTuple):
     type: str
-    tanh_value: float
-    ratio_fine_region: float
-    cells_fine: float
-    piecewise_parameters: Tuple[PiecewiseStretchingParameters]
+    tanh_value: float = 0.0
+    ratio_fine_region: float = 0.0
+    cells_fine: float = 0.0
+    piecewise_parameters: Tuple[PiecewiseStretchingParameters] = ()
+    file: str = None  # Path to .h5 for FROM_H5
 
 class AxisSetup(NamedTuple):
-    cells: int
-    range: Tuple
-    stretching: MeshStretchingSetup
+    cells: int = 1
+    range: Tuple = (0.0, 1.0)
+    stretching: MeshStretchingSetup = None
 
 class DomainSetup(NamedTuple):
     x: AxisSetup
