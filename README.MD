@@ -1,3 +1,15 @@
+This is a fork of JAXFLUIDS (See docs below)
+
+The intension here is to extend the levelset functionality to include flexible importing custom geometries through a .h5 file of an SFD mesh with a non-uniformly spaced grid. This will make use of the current grid stretching functionality in the levelset, The current drawback is that it cannot be used to handle importing of completely custom grids and importing of custom geometry requires the SDF to be computed on uniform grid in all spacial directions. 
+
+Current WIP:
+- Investigate current grid stretching functionality and dependent files in the solver.
+- Implement non-uniform import utility with as little core functionality changes as possible.
+- Testing
+- Update docs.
+
+
+
 # JAX-Fluids: A Differentiable Fluid Dynamics Package
 
 JAX-Fluids is a fully-differentiable CFD solver for 3D, compressible single-phase and two-phase flows.
