@@ -177,7 +177,7 @@ class IterativeExtender:
                 else:
                     quantity = quantity_out
 
-                args = (quantity, index+1, mean_residual)
+                args = (quantity, index+1, mean_residual, directional_derivative)
                 return args
             
             def _cond_fun(args: Tuple[int, Array, float]) -> bool:
@@ -190,7 +190,7 @@ class IterativeExtender:
                 quantity_buffer = jnp.zeros((steps+1,)+quantity.shape)
                 quantity = quantity_buffer.at[0].set(quantity)
 
-            args = (quantity, 0, 1e10) # NOTE initial value for mean residual for while condition is hard coded to 1e10
+            args = (quantity, 0, 1e10, None) # NOTE initial value for mean residual for while condition is hard coded to 1e10
             args = jax.lax.while_loop(_cond_fun, _body_func, args)
             quantity = args[0]
             step_count = args[1]
