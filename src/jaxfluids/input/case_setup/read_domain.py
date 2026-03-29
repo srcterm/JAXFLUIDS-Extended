@@ -106,7 +106,7 @@ def read_mesh_stretching(
     is_optional = True if type_str == False else False
     path_params = get_path_to_key(path_stretching, "parameters")
     parameters_case_setup = get_setup_value(
-        stretching_case_setup, "parameters", path_stretching, (list, dict),
+        stretching_case_setup, "parameters", path_params, (list, dict),
         is_optional=is_optional, default_value=[])
 
     tanh_value = None
