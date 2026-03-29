@@ -31,19 +31,29 @@ def read_domain_setup(
         axis_case_setup = get_setup_value(domain_case_setup, axis, path_axes, dict,
             is_optional=False)
 
-        path_range = get_path_to_key(path_axes, "range")
-        axis_range = get_setup_value(axis_case_setup, "range", path_range, list,
-                                     is_optional=False)
-        axis_range_nondim = (
-            unit_handler.non_dimensionalize(axis_range[0], "length"),
-            unit_handler.non_dimensionalize(axis_range[1], "length"))
-
-        path_cells = get_path_to_key(path_axes, "cells")
-        cells = get_setup_value(axis_case_setup, "cells", path_cells, int,
-                                is_optional=False, numerical_value_condition=(">=",1))
-
         stretching_setup = read_mesh_stretching(
             axis_case_setup, unit_handler, axis)
+
+        if stretching_setup and stretching_setup.type == "FROM_H5":
+            from jaxfluids.domain.mesh_creation.from_h5 import extract_h5_domain_info
+            h5_metadata = extract_h5_domain_info(stretching_setup.file)
+            axis_index = ["x", "y", "z"].index(axis)
+            cells = h5_metadata["cell_counts"][axis_index]
+            h5_range = h5_metadata["domain_ranges"][axis_index]
+            axis_range_nondim = (
+                unit_handler.non_dimensionalize(h5_range[0], "length"),
+                unit_handler.non_dimensionalize(h5_range[1], "length"))
+        else:
+            path_range = get_path_to_key(path_axes, "range")
+            axis_range = get_setup_value(axis_case_setup, "range", path_range, list,
+                                         is_optional=False)
+            axis_range_nondim = (
+                unit_handler.non_dimensionalize(axis_range[0], "length"),
+                unit_handler.non_dimensionalize(axis_range[1], "length"))
+
+            path_cells = get_path_to_key(path_axes, "cells")
+            cells = get_setup_value(axis_case_setup, "cells", path_cells, int,
+                                    is_optional=False, numerical_value_condition=(">=",1))
 
         axis_dict = AxisSetup(
             cells,
@@ -103,7 +113,7 @@ def read_mesh_stretching(
         is_optional=True, default_value=False,
         possible_string_values=TUPLE_MESH_STRETCHING_TYPES)
 
-    is_optional = True if type_str == False else False
+    is_optional = True if type_str == False or type_str == "FROM_H5" else False
     path_params = get_path_to_key(path_stretching, "parameters")
     parameters_case_setup = get_setup_value(
         stretching_case_setup, "parameters", path_params, (list, dict),
@@ -170,10 +180,17 @@ def read_mesh_stretching(
             parameters_case_setup, "cells_fine", path, int,
             is_optional=False, numerical_value_condition=(">", 0))
 
+    file_path = None
+    if type_str == "FROM_H5":
+        path_file = get_path_to_key(path_stretching, "file")
+        file_path = get_setup_value(
+            stretching_case_setup, "file", path_file, str,
+            is_optional=False)
+
     stretching_setup = MeshStretchingSetup(
         type_str, tanh_value, ratio_fine_region,
-        cells_fine, piecewise_parameters)
-        
+        cells_fine, piecewise_parameters, file_path)
+
     return stretching_setup
 
 def read_decomposition(domain_case_setup: Dict) -> DomainDecompositionSetup:

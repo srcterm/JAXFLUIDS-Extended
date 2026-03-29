@@ -16,10 +16,11 @@ class PiecewiseStretchingParameters(NamedTuple):
 
 class MeshStretchingSetup(NamedTuple):
     type: str
-    tanh_value: float
-    ratio_fine_region: float
-    cells_fine: float
-    piecewise_parameters: Tuple[PiecewiseStretchingParameters]
+    tanh_value: float = None
+    ratio_fine_region: float = None
+    cells_fine: float = None
+    piecewise_parameters: Tuple[PiecewiseStretchingParameters] = None
+    file: str = None
 
 class AxisSetup(NamedTuple):
     cells: int

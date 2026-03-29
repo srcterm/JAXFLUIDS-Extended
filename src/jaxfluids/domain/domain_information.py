@@ -98,7 +98,8 @@ class DomainInformation:
             "HOMOGENEOUS": homogeneous,
             "CHANNEL": channel,
             "BOUNDARY_LAYER": boundary_layer,
-            "PIECEWISE": piecewise
+            "PIECEWISE": piecewise,
+            "FROM_H5": from_h5,
         } 
 
         for axis_index, axis in enumerate(AXES):
