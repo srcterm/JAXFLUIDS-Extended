@@ -69,6 +69,10 @@
         "is_double_precision_output": true
     },
     "output": {
-        "is_double_precision": true
+        "derivative_stencil": "CENTRAL4",
+        "logging": {
+            "frequency": 10
+        },
+        "is_xdmf": false
     }
 }

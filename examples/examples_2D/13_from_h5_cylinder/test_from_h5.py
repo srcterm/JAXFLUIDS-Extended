@@ -1,63 +1,94 @@
-"""Verify FROM_H5 mesh import works correctly.
+"""Verify FROM_H5 mesh import for both stretched and uniform meshes.
 
-Tests only the InputManager stage (mesh creation, config reading)
-without running the full initialization which requires expensive
-JAX compilation.
+Tests the InputManager stage (mesh creation, config reading) without
+running the full simulation.
 """
 
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
-from jaxfluids import InputManager
-from jaxfluids.domain.mesh_creation.from_h5 import get_cell_centered_levelset
 import jax.numpy as jnp
 import numpy as np
+from jaxfluids import InputManager
+from jaxfluids.domain.mesh_creation.from_h5 import get_cell_centered_levelset
 
-input_manager = InputManager("cylinder_from_h5.json", "numerical_setup.json")
 
-di = input_manager.domain_information
-print("Global number of cells:", di.global_number_of_cells)
-print("Domain size:", di.domain_size)
-print("Is mesh stretching:", di.is_mesh_stretching)
+def check_mesh(config_file, h5_file, expected_cells, expected_domain,
+               expect_stretching, label):
+    """Verify a single FROM_H5 mesh configuration."""
+    print(f"\n--- {label} ---")
+    print(f"  Config: {config_file}")
+    print(f"  Mesh:   {h5_file}")
 
-cc = di.get_global_cell_centers()
-cs = di.get_global_cell_sizes()
-print("Cell centers x shape:", cc[0].shape,
-      "range:", float(jnp.min(cc[0])), "to", float(jnp.max(cc[0])))
-print("Cell centers y shape:", cc[1].shape,
-      "range:", float(jnp.min(cc[1])), "to", float(jnp.max(cc[1])))
-print("Cell sizes x:", cs[0].shape, "dx =", float(jnp.min(cs[0])))
-print("Cell sizes y:", cs[1].shape, "dy =", float(jnp.min(cs[1])))
+    im = InputManager(config_file, "numerical_setup.json")
+    di = im.domain_information
 
-assert di.global_number_of_cells == (160, 100, 1), \
-    f"Cell counts mismatch: {di.global_number_of_cells}"
-assert abs(di.domain_size[0][0] - (-6.0)) < 1e-10, "X min mismatch"
-assert abs(di.domain_size[0][1] - 10.0) < 1e-10, "X max mismatch"
-assert abs(di.domain_size[1][0] - (-5.0)) < 1e-10, "Y min mismatch"
-assert abs(di.domain_size[1][1] - 5.0) < 1e-10, "Y max mismatch"
+    print(f"  Cells:      {di.global_number_of_cells}")
+    print(f"  Domain:     {di.domain_size}")
+    print(f"  Stretching: {di.is_mesh_stretching}")
 
-# Verify cell centers are within domain
-assert float(jnp.min(cc[0])) > -6.0, "Cell centers should be inside domain"
-assert float(jnp.max(cc[0])) < 10.0, "Cell centers should be inside domain"
+    # Cell counts
+    assert di.global_number_of_cells == expected_cells, \
+        f"Cell counts: {di.global_number_of_cells} != {expected_cells}"
 
-# Verify cell sizes sum to domain length
-dx_total = float(jnp.sum(cs[0]))
-assert abs(dx_total - 16.0) < 1e-10, f"dx total {dx_total} != 16.0"
-dy_total = float(jnp.sum(cs[1]))
-assert abs(dy_total - 10.0) < 1e-10, f"dy total {dy_total} != 10.0"
+    # Domain ranges
+    for axis in range(2):
+        lo, hi = expected_domain[axis]
+        assert abs(di.domain_size[axis][0] - lo) < 1e-10, \
+            f"Axis {axis} min: {di.domain_size[axis][0]} != {lo}"
+        assert abs(di.domain_size[axis][1] - hi) < 1e-10, \
+            f"Axis {axis} max: {di.domain_size[axis][1]} != {hi}"
 
-# Verify levelset H5 data is readable via our function
-ls = get_cell_centered_levelset("cylinder_mesh.h5")
-print("Cell-centered levelset shape:", ls.shape)
-assert ls.shape == (160, 100, 1), f"Levelset shape mismatch: {ls.shape}"
-assert np.min(ls) < 0, "Levelset should have negative values (inside cylinder)"
-assert np.max(ls) > 0, "Levelset should have positive values (outside cylinder)"
+    # Mesh stretching flags
+    for axis in range(3):
+        assert di.is_mesh_stretching[axis] == expect_stretching[axis], \
+            f"Axis {axis} stretching: {di.is_mesh_stretching[axis]} != {expect_stretching[axis]}"
 
-# Check SDF values at known points (center should be ~ -0.5)
-cx_idx, cy_idx = 60, 50  # approximate center of domain at x=0, y=0
-center_val = ls[cx_idx, cy_idx, 0]
-print(f"Levelset at center ({cx_idx},{cy_idx}): {center_val:.4f} (expect ~ -0.5)")
-assert center_val < 0, "Center of cylinder should be inside (negative)"
+    # Cell centers within domain
+    cc = di.get_global_cell_centers()
+    assert float(jnp.min(cc[0])) > expected_domain[0][0]
+    assert float(jnp.max(cc[0])) < expected_domain[0][1]
+    assert float(jnp.min(cc[1])) > expected_domain[1][0]
+    assert float(jnp.max(cc[1])) < expected_domain[1][1]
 
-print()
-print("FROM_H5 feature: ALL CHECKS PASSED")
+    # Cell sizes sum to domain length
+    cs = di.get_global_cell_sizes()
+    dx_total = float(jnp.sum(cs[0]))
+    dy_total = float(jnp.sum(cs[1]))
+    x_len = expected_domain[0][1] - expected_domain[0][0]
+    y_len = expected_domain[1][1] - expected_domain[1][0]
+    assert abs(dx_total - x_len) < 1e-10, f"dx sum {dx_total} != {x_len}"
+    assert abs(dy_total - y_len) < 1e-10, f"dy sum {dy_total} != {y_len}"
+
+    # Levelset
+    ls = get_cell_centered_levelset(h5_file)
+    nx, ny = expected_cells[0], expected_cells[1]
+    assert ls.shape == (nx, ny, 1), f"Levelset shape: {ls.shape}"
+    assert np.min(ls) < 0, "Levelset should have negative values (inside)"
+    assert np.max(ls) > 0, "Levelset should have positive values (outside)"
+
+    print(f"  PASSED")
+
+
+if __name__ == "__main__":
+    domain = [(-10.0, 12.0), (-10.0, 10.0)]
+
+    check_mesh(
+        config_file="cylinder_from_h5_stretched.json",
+        h5_file="cylinder_stretched.h5",
+        expected_cells=(500, 400, 1),
+        expected_domain=domain,
+        expect_stretching=(True, True, False),
+        label="Stretched (PIECEWISE-extracted)")
+
+    # FROM_H5 always reports stretching=True for active axes since the
+    # stretching type is set, regardless of whether the grid is uniform.
+    check_mesh(
+        config_file="cylinder_from_h5_uniform.json",
+        h5_file="cylinder_uniform.h5",
+        expected_cells=(440, 400, 1),
+        expected_domain=domain,
+        expect_stretching=(True, True, False),
+        label="Uniform")
+
+    print("\n=== ALL CHECKS PASSED ===")
